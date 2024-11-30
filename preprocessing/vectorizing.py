@@ -73,13 +73,6 @@ def process_skills(row, cosine_distance):
     })
 
 
-# Пример использования
-# Датасет data должен содержать колонки 'key_skills' и 'position'
-data = pd.DataFrame({
-    'key_skills': ['Python, SQL, Machine Learning', 'Java, Spring, Hibernate', 'Data Analysis, Excel'],
-    'position': ['Data Scientist', 'Backend Developer', 'Data Analyst']
-})
-
 
 
 
@@ -87,7 +80,7 @@ if __name__ == '__main__':
 #     distance = cosine_distance("SQL", '"программист" (по факту аналитик), отдел проектирование информационных систем')
 #     print(f"Косинусное расстояние: {distance}")
 
-    data = pd.read_csv('../data/client_dataset_csv.csv', index_col=0)[:10]
+    data = pd.read_csv('../data/client_dataset_csv.csv', index_col=0)[:3]
     print(data.shape)
     # Применяем функцию к каждому ряду
     new_columns = data.apply(lambda row: process_skills(row, cosine_distance), axis=1)
@@ -95,4 +88,4 @@ if __name__ == '__main__':
     # Объединяем результаты с оригинальным датасетом
     data = pd.concat([data, new_columns], axis=1)
 
-    print(data)
+    print(data[['mean_distance', 'count_above_05', 'min_distance', 'max_distance', 'std_distance']])
