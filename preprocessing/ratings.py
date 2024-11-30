@@ -1,3 +1,5 @@
+import json
+
 import numpy as np
 import pandas as pd
 
@@ -25,5 +27,15 @@ def competition_ratio(data):
     return competition_df
 
 
-def calculate_complany_rating(data):
-    pass
+def company_rates(df):
+    info = pd.read_csv('../data/company_rate.csv')
+    df = pd.merge(df, info, on='client_name', how='inner')
+    return df
+
+
+if __name__ == '__main__':
+    with open('../data/client_dataset.json', 'r', encoding='utf-8') as file:
+        data = json.load(file)
+
+    df = company_rates(pd.DataFrame(data))
+    print(df.head(10))
