@@ -1,5 +1,7 @@
 import json
-from preprocessing.formating import split_work_experience
+
+from preprocessing.feature_generating import generate_worker_features, extract_salaries
+from preprocessing.ratings import company_rates
 import pandas as pd
 
 
@@ -10,20 +12,11 @@ def read_json(file_path):
 
 
 if __name__ == '__main__':
-    data_dict = {'position': [],
-                 'age': [],
-                 'country': [],
-                 'city': [],
-                 'key_skills': [],
-                 'client_name': [],
-                 'grade_proof': [],
-                 'salary': []}
-    data = read_json('data/client_dataset.json')
-    for datum in data:
-        for key, value in datum.items():
-            if key != 'work_experience':
-                data_dict[key].append(value)
+    with open("data/client_dataset.json", "r", encoding="utf-8") as file:
+        data = json.load(file)
 
-    dataframe = pd.DataFrame(data_dict)
-
-    dataframe.to_csv('data/client_dataset_csv.csv')
+    data = generate_worker_features(pd.DataFrame(data))
+    data = extract_salaries(data, 'salary')
+    data = company_rates(pd.DataFrame(data))
+    print(data.columns)
+    print(data.head())

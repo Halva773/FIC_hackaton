@@ -1,3 +1,6 @@
 .venv
-/data
+/data/client_dataset.json
+/data/client_dataset_csv.csv
 .idea
+notebooks/.ipynb_checkpoints/
+preprocessing/__pycache__

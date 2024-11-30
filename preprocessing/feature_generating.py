@@ -5,8 +5,10 @@ from datetime import datetime
 import pandas as pd
 from dateutil.relativedelta import relativedelta
 
-from utils import split_work_experience as unique_work
 
+def split_work_experience(text):
+    works = re.split(r"(?=\d{4}-\d{2}-\d{2}\s-\s(?:\d{4}-\d{2}-\d{2}|:))", text)
+    return set(entry.strip() for entry in works if entry.strip())
 
 def calculate_experience_months(data):
     """
@@ -42,7 +44,7 @@ def calculate_experience_months(data):
 
 
 def generate_worker_features(df):
-    df['unique_work'] = df['work_experience'].apply(unique_work)
+    df['unique_work'] = df['work_experience'].apply(split_work_experience)
     df['work_experience_months'] = df['unique_work'].apply(calculate_experience_months)
     df['count_works'] = df['unique_work'].apply(len)
     df['avg_time_per_work'] = df['work_experience_months'] / df['count_works']
@@ -109,6 +111,7 @@ if __name__ == '__main__':
     with open('../data/client_dataset.json', 'r', encoding='utf-8') as file:
         data = json.load(file)
 
-    df = generate_worker_features(pd.DataFrame(data))
+    data = generate_worker_features(pd.DataFrame(data))
     data = extract_salaries(data, 'salary')
-    print(df[['min_salary', 'comfort_salary', 'grade', 'unique_work', 'count_works', 'work_experience_months', 'avg_time_per_work']].head(10))
+    print(data[['min_salary', 'comfort_salary', 'grade', 'unique_work', 'count_works', 'work_experience_months',
+                'avg_time_per_work']].head(10))

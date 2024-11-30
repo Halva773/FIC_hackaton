@@ -28,7 +28,7 @@ def competition_ratio(data):
 
 
 def company_rates(df):
-    info = pd.read_csv('../data/company_rate.csv')
+    info = pd.read_csv('data/company_rate.csv')
     df = pd.merge(df, info, on='client_name', how='inner')
     return df
 
