@@ -1,6 +1,7 @@
 import json
 
-from preprocessing.feature_generating import generate_worker_features, extract_salaries
+from preprocessing.feature_generating import generate_worker_features, extract_salaries, read_features, \
+    add_features_to_dataframe
 from preprocessing.ratings import company_rates
 import pandas as pd
 
@@ -22,5 +23,11 @@ if __name__ == '__main__':
     data = company_rates(pd.DataFrame(data))
     new_columns = data.apply(lambda row: process_skills(row, cosine_distance), axis=1)
     data = pd.concat([data, new_columns], axis=1)
+
+    features = read_features(file_path='../data/skills.txt')
+    data = add_features_to_dataframe(data, features)
+
+    data.drop(columns=['key_skills', 'position', 'salary', 'work_experience'])
+
     print(data.columns)
     print(data.head())

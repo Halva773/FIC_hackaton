@@ -1,48 +1,31 @@
 import torch
-from transformers import AutoTokenizer, AutoModel, logging
-from scipy.spatial.distance import cosine
 import pandas as pd
 import numpy as np
+from transformers import AutoTokenizer, AutoModel, logging
 
-logging.set_verbosity_error()  # Отключает все сообщения, кроме ошибок
+logging.set_verbosity_error()
+model_name = "DeepPavlov/rubert-base-cased"
+tokenizer = AutoTokenizer.from_pretrained(model_name)
+model = AutoModel.from_pretrained(model_name).cuda()  # Переносим модель на GPU
 
 
-
-def cosine_distance(text1, text2, model_name="DeepPavlov/rubert-base-cased"):
-    """
-    Вычисляет косинусное расстояние между двумя текстами с использованием BERT.
-
-    Аргументы:
-        text1 (str): Первый текст.
-        text2 (str): Второй текст.
-        model_name (str): Название модели BERT (по умолчанию ruBERT).
-
-    Возвращает:
-        float: Косинусное расстояние между двумя текстами.
-    """
-    # Загрузка модели и токенайзера
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
-    model = AutoModel.from_pretrained(model_name)
-
-    # Токенизация текстов
-    tokens1 = tokenizer(text1, return_tensors="pt", padding=True, truncation=True)
-    tokens2 = tokenizer(text2, return_tensors="pt", padding=True, truncation=True)
+# Функция для вычисления косинусного расстояния с использованием CUDA
+def cosine_distance(text1, text2, model=model, tokenizer=tokenizer):
+    # Токенизация и создание эмбеддингов
+    inputs1 = tokenizer(text1, return_tensors="pt", padding=True, truncation=True).to('cuda')
+    inputs2 = tokenizer(text2, return_tensors="pt", padding=True, truncation=True).to('cuda')
 
     # Получение эмбеддингов
     with torch.no_grad():
-        embedding1 = model(**tokens1).last_hidden_state.mean(dim=1).squeeze()
-        embedding2 = model(**tokens2).last_hidden_state.mean(dim=1).squeeze()
-
-    # Перевод в numpy для расчёта косинусного расстояния
-    embedding1 = embedding1.cpu().numpy()
-    embedding2 = embedding2.cpu().numpy()
+        embeddings1 = model(**inputs1).last_hidden_state.mean(dim=1)  # Берём среднее по всем токенам
+        embeddings2 = model(**inputs2).last_hidden_state.mean(dim=1)
 
     # Вычисление косинусного расстояния
-    distance = cosine(embedding1, embedding2)
-    return distance
+    sim = torch.nn.functional.cosine_similarity(embeddings1, embeddings2)
+    return sim.item()  # Возвращаем скалярное значение
 
 
-# Функция для обработки одной строки
+# Функция для обработки строки
 def process_skills(row, cosine_distance):
     skills = [skill.strip() for skill in row['key_skills'].split(',') if skill.strip()]
     position = row['position']
@@ -71,9 +54,6 @@ def process_skills(row, cosine_distance):
         'max_distance': max_distance,
         'std_distance': std_distance
     })
-
-
-
 
 
 if __name__ == '__main__':

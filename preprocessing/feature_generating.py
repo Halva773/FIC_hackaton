@@ -4,11 +4,13 @@ from datetime import datetime
 
 import pandas as pd
 from dateutil.relativedelta import relativedelta
+from rapidfuzz import process, fuzz
 
 
 def split_work_experience(text):
     works = re.split(r"(?=\d{4}-\d{2}-\d{2}\s-\s(?:\d{4}-\d{2}-\d{2}|:))", text)
     return set(entry.strip() for entry in works if entry.strip())
+
 
 def calculate_experience_months(data):
     """
@@ -107,11 +109,105 @@ def extract_salaries(df, salary_column):
     return df
 
 
+def normalize_russian_words(words):
+    """
+    Приводит русский текст к нормальной форме.
+    """
+    import pymorphy3
+    morph = pymorphy3.MorphAnalyzer()
+    return [morph.parse(word)[0].normal_form for word in words]
+
+
+def clean_and_reduce_skills(data, column_name='key_skills', threshold=80):
+    """
+    Очищает, нормализует и сокращает количество уникальных навыков в указанном столбце.
+
+    Параметры:
+        data (pd.DataFrame): Исходный DataFrame.
+        column_name (str): Название столбца с навыками.
+        threshold (int): Порог для объединения похожих навыков (0-100).
+
+    Возвращает:
+        list: Отсортированный и уменьшенный список уникальных навыков.
+    """
+    # Шаг 1: Удаляем пропущенные значения и разделяем навыки
+    all_skills = data[column_name].dropna().str.split(',').sum()
+
+    # Шаг 2: Приводим к нижнему регистру и удаляем лишние пробелы
+    cleaned_skills = {skill.strip().lower() for skill in all_skills if skill.strip()}
+
+    # Шаг 3: Объединяем похожие навыки
+    reduced_skills = []
+    while cleaned_skills:
+        skill = cleaned_skills.pop()
+        similar_skills = process.extract(skill, cleaned_skills, scorer=fuzz.ratio, score_cutoff=threshold)
+        reduced_skills.append(skill)
+        # Удаляем все найденные похожие навыки
+        for match, _, _ in similar_skills:
+            cleaned_skills.discard(match)
+
+    # Шаг 4: Сортируем результат
+    return sorted(reduced_skills)
+
+
+def add_features_to_dataframe(data, features, skills_column='key_skills'):
+    """
+    Добавляет столбцы для признаков и отмечает их наличие в ключевых навыках.
+
+    Параметры:
+        data (pd.DataFrame): Исходный DataFrame.
+        features (list): Список признаков.
+        skills_column (str): Название столбца с ключевыми навыками.
+
+    Возвращает:
+        pd.DataFrame: DataFrame с добавленными столбцами признаков.
+    """
+    # Удаляем дубликаты из списка признаков
+    features = list(set(features))
+
+    # Отделяем русские слова от остальных
+    russian_words = [feature for feature in features if re.search(r'[а-яА-Я]', feature)]
+    other_words = [feature for feature in features if feature not in russian_words]
+
+    # Нормализуем русские слова
+    normalized_russian_words = normalize_russian_words(russian_words)
+
+    # Объединяем нормализованные русские слова с другими
+    final_features = normalized_russian_words + other_words
+
+    # Создаем DataFrame со столбцами из final_features, заполненными нулями
+    new_columns = pd.DataFrame(0, index=data.index, columns=final_features)
+    # Объединяем существующий DataFrame с новым
+    data = pd.concat([data, new_columns], axis=1)
+
+    # Проверяем навыки в key_skills построчно
+    for index, row in data.iterrows():
+        key_skills = str(row[skills_column]).lower().split(', ')
+        for feature in final_features:
+            if feature in key_skills:
+                data.loc[index, feature] = 1  # Помечаем 1, если навык найден
+
+    return data
+
+
+def read_features(file_path='data/skills.txt'):
+    with open(file_path, 'r') as file:
+        features = file.read().split(', ')
+    return features
+
 if __name__ == '__main__':
     with open('../data/client_dataset.json', 'r', encoding='utf-8') as file:
         data = json.load(file)
+    data = pd.DataFrame(data)
+    # data = generate_worker_features(data)
+    # data = extract_salaries(data, 'salary')
+    # print(data[['min_salary', 'comfort_salary', 'grade', 'unique_work', 'count_works', 'work_experience_months',
+    #             'avg_time_per_work']].head(10))
+    # Чтение JSON-файла
 
-    data = generate_worker_features(pd.DataFrame(data))
-    data = extract_salaries(data, 'salary')
-    print(data[['min_salary', 'comfort_salary', 'grade', 'unique_work', 'count_works', 'work_experience_months',
-                'avg_time_per_work']].head(10))
+    features = read_features(file_path='../data/skills.txt')
+
+    processed_data = add_features_to_dataframe(data, features)
+    print(processed_data.columns)
+    print(processed_data.shape)
+    print(processed_data['c++'].sum())
