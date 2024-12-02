@@ -4,13 +4,14 @@ import pandas as pd
 import joblib
 import json
 import os
+from catboost import CatBoostClassifier
 from preprocessing.feature_generating import generate_worker_features, extract_salaries, read_features, add_features_to_dataframe
 from preprocessing.ratings import company_rates
 from preprocessing.vectorizing import process_skills, cosine_distance
 from PIL import Image, ImageTk  # Для работы с изображениями
 # Загрузка модели и признаков
-MODEL_PATH = "models/catboost_model.bin"
-model = joblib.load(MODEL_PATH)
+model = CatBoostClassifier()
+model.load_model('models/catboost_model.bin')
 
 FEATURES_PATH = 'data/skills.txt'
 features = read_features(file_path=FEATURES_PATH)
@@ -116,7 +117,7 @@ def create_app():
     # Добавление первого изображения
     img_path = "images/image1.png"  # Укажите путь к первому изображению
     image = Image.open(img_path)
-    image = image.resize((600, 200), Image.ANTIALIAS)  # Изменение размера изображения
+    image = image.resize((600, 200), Image.Resampling.LANCZOS)  # Изменение размера изображения
     photo = ImageTk.PhotoImage(image)
     tk.Label(root, image=photo).pack(pady=10)
 

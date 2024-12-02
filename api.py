@@ -4,13 +4,15 @@ import pandas as pd
 import joblib
 import json
 import os
+from catboost import CatBoostClassifier
 from preprocessing.feature_generating import generate_worker_features, extract_salaries, read_features, add_features_to_dataframe
 from preprocessing.ratings import company_rates
 from preprocessing.vectorizing import process_skills, cosine_distance
 
 # Загрузка модели
-MODEL_PATH = "models/catboost_model.bin"
-model = joblib.load(MODEL_PATH)
+model = CatBoostClassifier()
+model.load_model('models/catboost_model.bin')
+
 
 # Чтение признаков
 FEATURES_PATH = 'data/skills.txt'
@@ -66,4 +68,4 @@ async def predict(file: UploadFile):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="127.0.0.1", port=8000)
